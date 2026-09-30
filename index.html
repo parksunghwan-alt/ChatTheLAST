@@ -1,0 +1,1073 @@
+```html
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:,">
+    <title>채팅</title>
+
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Pretendard 폰트 -->
+    <link rel="stylesheet"
+          as="style"
+          crossorigin
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: "Pretendard Variable", Pretendard, -apple-system,
+                BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+        }
+
+        :root {
+            --bg: #eef0f4;
+            --panel: #ffffff;
+            --border: #eceef2;
+
+            --text: #202124;
+            --subtext: #8a8f98;
+
+            --other: #f1f2f4;
+            --mine: #7657ee;
+            --mine-dark: #6746df;
+        }
+
+        /* =========================================================
+           전체 배경
+        ========================================================= */
+
+        body {
+            background: #eef0f4;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            min-height: 100vh;
+            padding: 16px;
+
+            overflow: hidden;
+        }
+
+        /* =========================================================
+           메인 채팅창
+        ========================================================= */
+
+        .chat-container {
+            width: 100%;
+            max-width: 440px;
+            height: 85vh;
+            max-height: 800px;
+
+            background: var(--panel);
+
+            border-radius: 24px;
+
+            border: 1px solid rgba(0, 0, 0, 0.04);
+
+            box-shadow:
+                0 20px 50px rgba(32, 35, 45, 0.10),
+                0 4px 12px rgba(32, 35, 45, 0.05);
+
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+
+            animation:
+                chatEntrance
+                0.8s
+                cubic-bezier(0.16, 1.45, 0.35, 1)
+                both;
+        }
+
+        /* =========================================================
+           헤더
+        ========================================================= */
+
+        .header {
+            padding: 18px 21px;
+
+            background: #ffffff;
+
+            border-bottom: 1px solid var(--border);
+
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header .title {
+            font-weight: 800;
+            font-size: 19px;
+
+            color: #1f2024;
+
+            letter-spacing: -0.5px;
+
+            display: flex;
+            align-items: center;
+            gap: 7px;
+
+            transform-origin: left center;
+
+            animation:
+                titleBounce
+                1s
+                0.35s
+                cubic-bezier(0.16, 1.5, 0.35, 1)
+                both;
+        }
+
+        /* =========================================================
+           LIVE
+        ========================================================= */
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+
+            font-size: 11px;
+            font-weight: 800;
+
+            color: #14a66b;
+
+            background: #effbf6;
+
+            padding: 5px 9px;
+
+            border-radius: 999px;
+
+            animation:
+                badgePop
+                0.7s
+                0.55s
+                cubic-bezier(0.16, 1.5, 0.35, 1)
+                both;
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+
+            border-radius: 50%;
+
+            background: #19c27a;
+
+            box-shadow:
+                0 0 0 0 rgba(25, 194, 122, 0.35);
+
+            animation:
+                livePulse
+                1.8s
+                ease-in-out
+                infinite;
+        }
+
+        /* =========================================================
+           닉네임 영역
+        ========================================================= */
+
+        .nickname-box {
+            padding: 11px 18px;
+
+            background: #fafbfc;
+
+            border-bottom: 1px solid var(--border);
+
+            display: flex;
+            align-items: center;
+
+            gap: 9px;
+        }
+
+        .nickname-box label {
+            font-size: 12px;
+            font-weight: 700;
+
+            color: #888e98;
+
+            white-space: nowrap;
+        }
+
+        .nickname-box input {
+            flex: 1;
+
+            min-width: 0;
+
+            padding: 8px 12px;
+
+            border: 1px solid #e6e8ed;
+
+            border-radius: 10px;
+
+            background: white;
+
+            color: #36383d;
+
+            font-size: 13px;
+
+            outline: none;
+
+            transition:
+                border-color 0.2s ease,
+                box-shadow 0.25s ease,
+                transform 0.32s cubic-bezier(0.16, 1.45, 0.35, 1);
+        }
+
+        .nickname-box input:focus {
+            border-color: #9a88ef;
+
+            box-shadow:
+                0 0 0 4px rgba(118, 87, 238, 0.09);
+
+            transform:
+                scale(1.015, 0.985);
+        }
+
+        /* =========================================================
+           채팅 영역
+        ========================================================= */
+
+        .chat-box {
+            flex: 1;
+
+            padding: 20px;
+
+            overflow-y: auto;
+
+            display: flex;
+            flex-direction: column;
+
+            gap: 12px;
+
+            scroll-behavior: smooth;
+
+            background: #ffffff;
+        }
+
+        /* 스크롤바 */
+
+        .chat-box::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .chat-box::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .chat-box::-webkit-scrollbar-thumb {
+            background: #d9dce2;
+            border-radius: 999px;
+        }
+
+        /* =========================================================
+           로딩
+        ========================================================= */
+
+        .loading {
+            text-align: center;
+
+            font-size: 11px;
+
+            color: #9ba0a8;
+
+            padding: 7px 0;
+
+            display: none;
+        }
+
+        /* =========================================================
+           메시지 전체
+        ========================================================= */
+
+        .message-wrapper {
+            display: flex;
+            flex-direction: column;
+
+            max-width: 78%;
+
+            animation:
+                messageSpring
+                0.72s
+                cubic-bezier(0.16, 1.48, 0.38, 1)
+                both;
+
+            transform-origin: bottom center;
+        }
+
+        .message-wrapper.other {
+            align-self: flex-start;
+            transform-origin: bottom left;
+        }
+
+        .message-wrapper.me {
+            align-self: flex-end;
+            transform-origin: bottom right;
+        }
+
+        /* =========================================================
+           닉네임
+        ========================================================= */
+
+        .nickname-tag {
+            font-size: 10px;
+            font-weight: 700;
+
+            color: #969aa3;
+
+            margin-bottom: 4px;
+            margin-left: 7px;
+
+            animation:
+                nicknamePop
+                0.42s
+                0.06s
+                cubic-bezier(0.16, 1.4, 0.35, 1)
+                both;
+
+            transform-origin: bottom left;
+        }
+
+        .message-wrapper.me .nickname-tag {
+            text-align: right;
+
+            margin-right: 7px;
+            margin-left: 0;
+
+            transform-origin: bottom right;
+        }
+
+        /* =========================================================
+           말풍선
+        ========================================================= */
+
+        .message-bubble {
+            position: relative;
+
+            padding: 11px 15px;
+
+            font-size: 14px;
+            line-height: 1.5;
+
+            word-break: break-word;
+
+            border-radius: 19px;
+
+            box-shadow:
+                0 2px 5px rgba(20, 20, 30, 0.03);
+
+            animation:
+                bubbleSquish
+                0.7s
+                0.02s
+                cubic-bezier(0.16, 1.55, 0.38, 1)
+                both;
+
+            transition:
+                transform 0.32s cubic-bezier(0.16, 1.5, 0.35, 1),
+                box-shadow 0.25s ease;
+        }
+
+        /* =========================================================
+           상대방 말풍선
+        ========================================================= */
+
+        .message-wrapper.other .message-bubble {
+            background: var(--other);
+
+            color: #26282d;
+
+            border-top-left-radius: 5px;
+        }
+
+        /* =========================================================
+           내 말풍선
+        ========================================================= */
+
+        .message-wrapper.me .message-bubble {
+            background: var(--mine);
+
+            color: #ffffff;
+
+            border-top-right-radius: 5px;
+
+            box-shadow:
+                0 4px 10px rgba(118, 87, 238, 0.16);
+        }
+
+        /* =========================================================
+           hover
+        ========================================================= */
+
+        .message-bubble:hover {
+            transform:
+                scale(1.035, 0.965)
+                translateY(-1px);
+
+            box-shadow:
+                0 7px 14px rgba(30, 30, 40, 0.08);
+        }
+
+        .message-wrapper.other .message-bubble:hover {
+            transform:
+                scale(1.04, 0.96)
+                translateX(2px)
+                translateY(-1px);
+        }
+
+        .message-wrapper.me .message-bubble:hover {
+            transform:
+                scale(1.04, 0.96)
+                translateX(-2px)
+                translateY(-1px);
+
+            box-shadow:
+                0 8px 18px rgba(118, 87, 238, 0.24);
+        }
+
+        /* =========================================================
+           입력창
+        ========================================================= */
+
+        .input-box {
+            padding: 13px 15px;
+
+            background: #ffffff;
+
+            border-top: 1px solid var(--border);
+
+            display: flex;
+            align-items: center;
+
+            gap: 9px;
+        }
+
+        .input-box input {
+            flex: 1;
+
+            min-width: 0;
+
+            padding: 12px 16px;
+
+            border: 1px solid #e4e6eb;
+
+            border-radius: 999px;
+
+            font-size: 14px;
+
+            outline: none;
+
+            background: #f7f8fa;
+
+            color: #27292e;
+
+            transition:
+                background 0.2s ease,
+                border-color 0.2s ease,
+                box-shadow 0.25s ease,
+                transform 0.35s cubic-bezier(0.16, 1.45, 0.35, 1);
+        }
+
+        .input-box input:focus {
+            background: #ffffff;
+
+            border-color: #9a88ef;
+
+            box-shadow:
+                0 0 0 4px rgba(118, 87, 238, 0.08);
+
+            transform:
+                scale(1.015, 0.985);
+        }
+
+        .input-box input::placeholder {
+            color: #a1a5ad;
+        }
+
+        /* =========================================================
+           전송 버튼
+        ========================================================= */
+
+        .input-box button {
+            width: 44px;
+            height: 44px;
+
+            border: none;
+
+            background: var(--mine);
+
+            color: white;
+
+            border-radius: 50%;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            cursor: pointer;
+
+            flex-shrink: 0;
+
+            box-shadow:
+                0 5px 12px rgba(118, 87, 238, 0.22);
+
+            animation:
+                buttonIdle
+                3.2s
+                ease-in-out
+                infinite;
+
+            transition:
+                transform 0.25s cubic-bezier(0.16, 1.55, 0.35, 1),
+                box-shadow 0.2s ease;
+        }
+
+        .input-box button:hover {
+            transform:
+                translateY(-3px)
+                scale(1.1, 0.9)
+                rotate(-4deg);
+
+            box-shadow:
+                0 10px 20px rgba(118, 87, 238, 0.30);
+        }
+
+        .input-box button:active {
+            transform:
+                translateY(3px)
+                scale(0.78, 1.18)
+                rotate(5deg);
+
+            box-shadow:
+                0 2px 5px rgba(118, 87, 238, 0.20);
+        }
+
+        .input-box button svg {
+            width: 18px;
+            height: 18px;
+
+            fill: currentColor;
+
+            margin-left: 2px;
+
+            transition:
+                transform 0.28s cubic-bezier(0.16, 1.5, 0.35, 1);
+        }
+
+        .input-box button:hover svg {
+            transform:
+                translateX(2px)
+                translateY(-1px)
+                scale(1.1);
+        }
+
+        /* =========================================================
+           전체 채팅창 등장
+        ========================================================= */
+
+        @keyframes chatEntrance {
+            0% {
+                opacity: 0;
+
+                transform:
+                    translateY(55px)
+                    scale(0.82, 1.12);
+            }
+
+            45% {
+                opacity: 1;
+
+                transform:
+                    translateY(-12px)
+                    scale(1.035, 0.965);
+            }
+
+            65% {
+                transform:
+                    translateY(5px)
+                    scale(0.985, 1.015);
+            }
+
+            82% {
+                transform:
+                    translateY(-2px)
+                    scale(1.012, 0.992);
+            }
+
+            100% {
+                opacity: 1;
+
+                transform:
+                    translateY(0)
+                    scale(1);
+            }
+        }
+
+        /* =========================================================
+           제목 등장
+        ========================================================= */
+
+        @keyframes titleBounce {
+            0% {
+                opacity: 0;
+
+                transform:
+                    translateY(-10px)
+                    scale(0.7, 1.3);
+            }
+
+            55% {
+                opacity: 1;
+
+                transform:
+                    translateY(2px)
+                    scale(1.08, 0.92);
+            }
+
+            75% {
+                transform:
+                    scale(0.97, 1.03);
+            }
+
+            100% {
+                transform:
+                    scale(1);
+            }
+        }
+
+        /* =========================================================
+           LIVE 등장
+        ========================================================= */
+
+        @keyframes badgePop {
+            0% {
+                opacity: 0;
+
+                transform:
+                    scale(0.5, 1.4)
+                    translateY(-8px);
+            }
+
+            55% {
+                opacity: 1;
+
+                transform:
+                    scale(1.12, 0.9)
+                    translateY(2px);
+            }
+
+            78% {
+                transform:
+                    scale(0.97, 1.03);
+            }
+
+            100% {
+                transform:
+                    scale(1)
+                    translateY(0);
+            }
+        }
+
+        /* =========================================================
+           새 메시지 핵심 애니메이션
+        ========================================================= */
+
+        @keyframes messageSpring {
+            0% {
+                opacity: 0;
+
+                transform:
+                    translateY(28px)
+                    scale(0.55, 1.45)
+                    rotate(-2deg);
+            }
+
+            18% {
+                opacity: 1;
+            }
+
+            38% {
+                transform:
+                    translateY(-10px)
+                    scale(1.12, 0.82)
+                    rotate(1.8deg);
+            }
+
+            55% {
+                transform:
+                    translateY(5px)
+                    scale(0.91, 1.08)
+                    rotate(-1deg);
+            }
+
+            70% {
+                transform:
+                    translateY(-3px)
+                    scale(1.05, 0.96)
+                    rotate(0.5deg);
+            }
+
+            84% {
+                transform:
+                    translateY(1px)
+                    scale(0.985, 1.015)
+                    rotate(-0.2deg);
+            }
+
+            100% {
+                opacity: 1;
+
+                transform:
+                    translateY(0)
+                    scale(1)
+                    rotate(0);
+            }
+        }
+
+        /* =========================================================
+           말풍선 자체 추가 찌그러짐
+        ========================================================= */
+
+        @keyframes bubbleSquish {
+            0% {
+                transform:
+                    scale(0.7, 1.3);
+            }
+
+            25% {
+                transform:
+                    scale(1.12, 0.87);
+            }
+
+            45% {
+                transform:
+                    scale(0.93, 1.07);
+            }
+
+            65% {
+                transform:
+                    scale(1.04, 0.97);
+            }
+
+            82% {
+                transform:
+                    scale(0.99, 1.01);
+            }
+
+            100% {
+                transform:
+                    scale(1, 1);
+            }
+        }
+
+        /* =========================================================
+           닉네임 등장
+        ========================================================= */
+
+        @keyframes nicknamePop {
+            0% {
+                opacity: 0;
+
+                transform:
+                    translateY(6px)
+                    scale(0.8, 1.15);
+            }
+
+            65% {
+                opacity: 1;
+
+                transform:
+                    translateY(-1px)
+                    scale(1.04, 0.97);
+            }
+
+            100% {
+                opacity: 1;
+
+                transform:
+                    translateY(0)
+                    scale(1);
+            }
+        }
+
+        /* =========================================================
+           LIVE 점
+        ========================================================= */
+
+        @keyframes livePulse {
+            0% {
+                transform: scale(0.85);
+
+                box-shadow:
+                    0 0 0 0 rgba(25, 194, 122, 0.4);
+            }
+
+            50% {
+                transform: scale(1.15);
+
+                box-shadow:
+                    0 0 0 5px rgba(25, 194, 122, 0);
+            }
+
+            100% {
+                transform: scale(0.85);
+
+                box-shadow:
+                    0 0 0 0 rgba(25, 194, 122, 0);
+            }
+        }
+
+        /* =========================================================
+           전송 버튼 idle
+        ========================================================= */
+
+        @keyframes buttonIdle {
+            0%,
+            100% {
+                transform:
+                    translateY(0)
+                    scale(1);
+            }
+
+            50% {
+                transform:
+                    translateY(-1px)
+                    scale(1.025, 0.98);
+            }
+        }
+
+        /* =========================================================
+           모바일
+        ========================================================= */
+
+        @media (max-width: 520px) {
+            body {
+                padding: 8px;
+            }
+
+            .chat-container {
+                height: calc(100vh - 16px);
+                max-height: none;
+
+                border-radius: 22px;
+            }
+
+            .chat-box {
+                padding-left: 14px;
+                padding-right: 14px;
+            }
+
+            .message-wrapper {
+                max-width: 84%;
+            }
+        }
+
+        /* =========================================================
+           모션 감소 설정
+        ========================================================= */
+
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="chat-container">
+
+    <!-- 헤더 -->
+    <div class="header">
+        <div class="title">💬 채팅</div>
+
+        <div class="status-badge">
+            <span class="status-dot"></span>
+            LIVE
+        </div>
+    </div>
+
+    <!-- 닉네임 설정 -->
+    <div class="nickname-box">
+        <label for="nicknameInput">닉네임</label>
+
+        <input
+            type="text"
+            id="nicknameInput"
+            placeholder="닉네임을 입력하세요"
+            value="익명"
+            maxlength="12"
+        >
+    </div>
+
+    <!-- 메시지 리스트 -->
+    <div class="chat-box" id="chatBox">
+        <div id="loadingMore" class="loading">
+            이전 메시지 불러오는 중...
+        </div>
+    </div>
+
+    <!-- 메시지 입력창 -->
+    <div class="input-box">
+        <input
+            type="text"
+            id="messageInput"
+            placeholder="메시지를 입력하세요..."
+            onkeypress="if(event.key === 'Enter') sendMessage()"
+        >
+
+        <button onclick="sendMessage()" aria-label="전송">
+            <svg viewBox="0 0 24 24">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+            </svg>
+        </button>
+    </div>
+
+</div>
+
+<script>
+    // 기존 Supabase 서버 연동 정보 그대로 유지
+    const SUPABASE_URL = 'https://lygjkofnsronuksdfriz.supabase.co'; 
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5Z2prb2Zuc3JvbnVrc2Rmcml6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3MTQxMDIsImV4cCI6MjEwNjI5MDEwMn0.nK6Iw4OmFZ5_tlAJaLN1xcZRMfC_MfFJnJUfHr1FJBw';
+    
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const chatBox = document.getElementById('chatBox');
+    const messageInput = document.getElementById('messageInput');
+    const nicknameInput = document.getElementById('nicknameInput');
+    const loadingMore = document.getElementById('loadingMore');
+
+    let isFetching = false;
+    let hasMore = true;
+    let messageCount = 0;
+    const LIMIT = 15;
+
+    function renderMessage(msg, prepend = false) {
+        const isMe = msg.nickname === nicknameInput.value.trim();
+        
+        const wrapper = document.createElement('div');
+        wrapper.className = `message-wrapper ${isMe ? 'me' : 'other'}`;
+        
+        if (prepend) {
+            wrapper.style.animation = 'none';
+        }
+
+        wrapper.innerHTML = `
+            <div class="nickname-tag">${escapeHtml(msg.nickname || '익명')}</div>
+            <div class="message-bubble">${escapeHtml(msg.content)}</div>
+        `;
+        
+        if (prepend) {
+            chatBox.insertBefore(wrapper, loadingMore.nextSibling);
+        } else {
+            chatBox.appendChild(wrapper);
+        }
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.innerText = text;
+        return div.innerHTML;
+    }
+
+    async function loadInitialMessages() {
+        const { data, error } = await supabaseClient
+            .from('messages')
+            .select('*')
+            .order('id', { ascending: false })
+            .limit(LIMIT);
+
+        if (data) {
+            data.reverse().forEach(msg => renderMessage(msg, false));
+            messageCount = data.length;
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+    }
+
+    async function loadMoreMessages() {
+        if (isFetching || !hasMore) return;
+        isFetching = true;
+        loadingMore.style.display = 'block';
+
+        const previousScrollHeight = chatBox.scrollHeight;
+
+        const { data, error } = await supabaseClient
+            .from('messages')
+            .select('*')
+            .order('id', { ascending: false })
+            .range(messageCount, messageCount + LIMIT - 1);
+
+        loadingMore.style.display = 'none';
+
+        if (data && data.length > 0) {
+            data.forEach(msg => renderMessage(msg, true));
+            messageCount += data.length;
+            chatBox.scrollTop = chatBox.scrollHeight - previousScrollHeight;
+        } else {
+            hasMore = false;
+        }
+
+        isFetching = false;
+    }
+
+    chatBox.addEventListener('scroll', () => {
+        if (chatBox.scrollTop === 0) {
+            loadMoreMessages();
+        }
+    });
+
+    async function sendMessage() {
+        const content = messageInput.value.trim();
+        const nickname = nicknameInput.value.trim() || '익명';
+
+        if (!content) return;
+
+        messageInput.value = '';
+
+        await supabaseClient
+            .from('messages')
+            .insert([
+                {
+                    nickname: nickname,
+                    content: content
+                }
+            ]);
+    }
+
+    supabaseClient
+        .channel('public:messages')
+        .on(
+            'postgres_changes',
+            {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'messages'
+            },
+            payload => {
+                renderMessage(payload.new, false);
+
+                chatBox.scrollTop = chatBox.scrollHeight;
+
+                messageCount++;
+            }
+        )
+        .subscribe();
+
+    loadInitialMessages();
+</script>
+
+</body>
+</html>
+```
